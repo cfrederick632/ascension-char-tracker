@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase, calculateBracket } from '../utils/supabase';
 
+// Helper function to capitalize the first letter and lowercase the rest
+const formatName = (str) => {
+  if (!str) return '';
+  const trimmed = str.trim();
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+};
+
 export default function Home() {
   const [characters, setCharacters] = useState([]);
   const [newChar, setNewChar] = useState({ name: '', class_spec: '', level: '' });
@@ -16,7 +23,7 @@ export default function Home() {
     const { data, error } = await supabase
       .from('characters')
       .select('*, users(username)')
-      .order('level', { ascending: false }); // Sort by level (highest first)
+      .order('level', { ascending: false });
 
     if (error) {
       console.error('Error fetching characters:', error.message);
@@ -26,19 +33,20 @@ export default function Home() {
     }
   };
 
-  // Add a new character
+  // Add a new character with auto-formatted name
   const handleAddCharacter = async (e) => {
     e.preventDefault();
     setErrorMessage('');
 
     const levelNum = parseInt(newChar.level, 10);
     const bracket = calculateBracket(levelNum);
+    const formattedName = formatName(newChar.name);
     
     const { error } = await supabase
       .from('characters')
       .insert([
         { 
-          name: newChar.name, 
+          name: formattedName, 
           class_spec: newChar.class_spec, 
           level: levelNum, 
           bg_bracket: bracket
@@ -54,7 +62,7 @@ export default function Home() {
     }
   };
 
-  // Easily update a character's level (+1, -1, or direct change)
+  // Easily update a character's level (+1, -1)
   const handleLevelChange = async (charId, newLevel) => {
     setErrorMessage('');
     const levelNum = Math.min(60, Math.max(1, parseInt(newLevel, 10) || 1));
@@ -69,7 +77,7 @@ export default function Home() {
       console.error('Error updating level:', error.message);
       setErrorMessage(`Update Error: ${error.message}`);
     } else {
-      fetchCharacters(); // Refresh and re-sort table automatically
+      fetchCharacters();
     }
   };
 
@@ -156,10 +164,11 @@ export default function Home() {
               {characters.length > 0 ? characters.map(char => (
                 <tr key={char.id} style={{ borderBottom: '1px solid #2a2a2a' }}>
                   <td style={tdStyle}>{char.users?.username || 'Guest'}</td>
-                  <td style={{ ...tdStyle, color: '#fff', fontWeight: 'bold' }}>{char.name}</td>
+                  <td style={{ ...tdStyle, color: '#fff', fontWeight: 'bold' }}>
+                    {formatName(char.name)}
+                  </td>
                   <td style={tdStyle}>{char.class_spec}</td>
                   <td style={tdStyle}>
-                    {/* Quick Level Controls */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <button 
                         type="button" 
@@ -238,7 +247,7 @@ export default function Home() {
             {matches.length > 0 ? matches.map(match => (
               <li key={match.id} style={{ marginBottom: '8px' }}>
                 <strong style={{ color: '#fff' }}>{match.users?.username || 'Guest'}</strong> can play{' '}
-                <strong style={{ color: '#fff' }}>{match.name}</strong> (Level {match.level} {match.class_spec})
+                <strong style={{ color: '#fff' }}>{formatName(match.name)}</strong> (Level {match.level} {match.class_spec})
               </li>
             )) : (
               <p style={{ color: '#777' }}>No characters currently in this bracket.</p>
@@ -250,7 +259,7 @@ export default function Home() {
   );
 }
 
-// Reuseable Dark Mode Styles
+// Reusable Dark Mode Styles
 const inputStyle = {
   backgroundColor: '#2a2a2a',
   color: '#ffffff',
