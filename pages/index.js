@@ -1,15 +1,35 @@
 import { useState, useEffect } from 'react';
+import { Auth } from '@supabase/auth-ui-react';
+import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase, calculateBracket } from '../utils/supabase';
 
 export default function Home() {
+  const [session, setSession] = useState(null);
+  const [mounted, setMounted] = useState(false);
   const [characters, setCharacters] = useState([]);
   const [newChar, setNewChar] = useState({ name: '', class_spec: '', level: '' });
   const [selectedBracket, setSelectedBracket] = useState('20-29');
 
-  // Fetch characters on load
+  // Prevent SSR pre-render issues by verifying client mount
   useEffect(() => {
-    fetchCharacters();
+    setMounted(true);
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (session) fetchCharacters();
+  }, [session]);
 
   const fetchCharacters = async () => {
     const { data, error } = await supabase
@@ -22,8 +42,6 @@ export default function Home() {
     e.preventDefault();
     const bracket = calculateBracket(parseInt(newChar.level));
     
-    // Note: In a real app, you'd get the user_id from the authenticated session.
-    // For this example, we'll assume a dummy user ID is being used.
     const { data, error } = await supabase
       .from('characters')
       .insert([
@@ -32,22 +50,41 @@ export default function Home() {
           class_spec: newChar.class_spec, 
           level: parseInt(newChar.level), 
           bg_bracket: bracket,
-          user_id: 'YOUR_DUMMY_USER_ID' // Replace with auth.user.id in production
+          user_id: session.user.id 
         }
       ]);
       
     if (!error) {
-      fetchCharacters(); // Refresh the list
+      fetchCharacters(); 
       setNewChar({ name: '', class_spec: '', level: '' });
     }
   };
 
-  // Filter characters for the matchmaker
+  // Do not render client components until the browser has mounted
+  if (!mounted) return null;
+
+  if (!session) {
+    return (
+      <div style={{ padding: '50px', maxWidth: '400px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+        <h1>Ascension WoW Matchmaker</h1>
+        <p>Please sign in to access the matchmaker.</p>
+        <Auth 
+          supabaseClient={supabase} 
+          appearance={{ theme: ThemeSupa }} 
+          providers={['google', 'github']} 
+        />
+      </div>
+    );
+  }
+
   const matches = characters.filter(c => c.bg_bracket === selectedBracket);
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>Ascension WoW Matchmaker</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>Ascension WoW Matchmaker</h1>
+        <button onClick={() => supabase.auth.signOut()}>Sign Out</button>
+      </div>
 
       {/* --- ADD CHARACTER FORM --- */}
       <section style={{ marginBottom: '40px', padding: '20px', border: '1px solid #ccc' }}>
@@ -123,7 +160,6 @@ export default function Home() {
           )}
         </ul>
       </section>
-
     </div>
   );
 }
