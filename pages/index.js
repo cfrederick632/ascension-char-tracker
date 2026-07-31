@@ -8,15 +8,15 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    console.log("Current Supabase URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
     fetchCharacters();
   }, []);
 
+  // Fetch characters and sort by level descending
   const fetchCharacters = async () => {
-    // Left-join with users table, or fall back to plain characters if null
     const { data, error } = await supabase
       .from('characters')
-      .select('*, users(username)');
+      .select('*, users(username)')
+      .order('level', { ascending: false }); // Sort by level (highest first)
 
     if (error) {
       console.error('Error fetching characters:', error.message);
@@ -26,11 +26,13 @@ export default function Home() {
     }
   };
 
+  // Add a new character
   const handleAddCharacter = async (e) => {
     e.preventDefault();
     setErrorMessage('');
 
-    const bracket = calculateBracket(newChar.level);
+    const levelNum = parseInt(newChar.level, 10);
+    const bracket = calculateBracket(levelNum);
     
     const { error } = await supabase
       .from('characters')
@@ -38,7 +40,7 @@ export default function Home() {
         { 
           name: newChar.name, 
           class_spec: newChar.class_spec, 
-          level: parseInt(newChar.level, 10), 
+          level: levelNum, 
           bg_bracket: bracket
         }
       ]);
@@ -47,98 +49,245 @@ export default function Home() {
       console.error('Error adding character:', error.message);
       setErrorMessage(`Insert Error: ${error.message}`);
     } else {
-      fetchCharacters(); // Refresh the table
+      fetchCharacters();
       setNewChar({ name: '', class_spec: '', level: '' });
+    }
+  };
+
+  // Easily update a character's level (+1, -1, or direct change)
+  const handleLevelChange = async (charId, newLevel) => {
+    setErrorMessage('');
+    const levelNum = Math.min(60, Math.max(1, parseInt(newLevel, 10) || 1));
+    const newBracket = calculateBracket(levelNum);
+
+    const { error } = await supabase
+      .from('characters')
+      .update({ level: levelNum, bg_bracket: newBracket })
+      .eq('id', charId);
+
+    if (error) {
+      console.error('Error updating level:', error.message);
+      setErrorMessage(`Update Error: ${error.message}`);
+    } else {
+      fetchCharacters(); // Refresh and re-sort table automatically
     }
   };
 
   const matches = characters.filter(c => c.bg_bracket === selectedBracket);
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>Ascension WoW Matchmaker</h1>
+    <div style={{ 
+      backgroundColor: '#121212', 
+      color: '#e0e0e0', 
+      minHeight: '100vh', 
+      padding: '30px 20px', 
+      fontFamily: 'system-ui, -apple-system, sans-serif' 
+    }}>
+      <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+        <h1 style={{ color: '#ffffff', borderBottom: '2px solid #333', paddingBottom: '10px' }}>
+          ⚔️ Ascension WoW Matchmaker
+        </h1>
 
-      {/* Error Display */}
-      {errorMessage && (
-        <div style={{ padding: '10px', backgroundColor: '#ffe6e6', color: '#cc0000', marginBottom: '20px', borderRadius: '4px' }}>
-          {errorMessage}
-        </div>
-      )}
+        {/* --- ERROR DISPLAY --- */}
+        {errorMessage && (
+          <div style={{ 
+            padding: '12px', 
+            backgroundColor: '#3a1616', 
+            color: '#ff6b6b', 
+            border: '1px solid #732222',
+            marginBottom: '20px', 
+            borderRadius: '6px' 
+          }}>
+            {errorMessage}
+          </div>
+        )}
 
-      {/* --- ADD CHARACTER FORM --- */}
-      <section style={{ marginBottom: '40px', padding: '20px', border: '1px solid #ccc' }}>
-        <h2>Add a Character</h2>
-        <form onSubmit={handleAddCharacter}>
-          <input 
-            type="text" placeholder="Character Name" required
-            value={newChar.name} onChange={e => setNewChar({...newChar, name: e.target.value})} 
-            style={{ marginRight: '10px' }}
-          />
-          <input 
-            type="text" placeholder="Class/Spec (e.g. Sun Cleric)" required
-            value={newChar.class_spec} onChange={e => setNewChar({...newChar, class_spec: e.target.value})} 
-            style={{ marginRight: '10px' }}
-          />
-          <input 
-            type="number" placeholder="Level (1-60)" min="1" max="60" required
-            value={newChar.level} onChange={e => setNewChar({...newChar, level: e.target.value})} 
-            style={{ marginRight: '10px' }}
-          />
-          <button type="submit">Add Character</button>
-        </form>
-      </section>
+        {/* --- ADD CHARACTER FORM --- */}
+        <section style={{ 
+          marginBottom: '30px', 
+          padding: '20px', 
+          backgroundColor: '#1e1e1e', 
+          borderRadius: '8px',
+          border: '1px solid #333'
+        }}>
+          <h2 style={{ marginTop: 0, color: '#fff', fontSize: '1.25rem' }}>Add a Character</h2>
+          <form onSubmit={handleAddCharacter} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <input 
+              type="text" placeholder="Character Name" required
+              value={newChar.name} onChange={e => setNewChar({...newChar, name: e.target.value})} 
+              style={inputStyle}
+            />
+            <input 
+              type="text" placeholder="Class/Spec (e.g. Sun Cleric)" required
+              value={newChar.class_spec} onChange={e => setNewChar({...newChar, class_spec: e.target.value})} 
+              style={inputStyle}
+            />
+            <input 
+              type="number" placeholder="Level (1-60)" min="1" max="60" required
+              value={newChar.level} onChange={e => setNewChar({...newChar, level: e.target.value})} 
+              style={{ ...inputStyle, width: '110px' }}
+            />
+            <button type="submit" style={buttonStyle}>Add Character</button>
+          </form>
+        </section>
 
-      {/* --- THE MASTER TABLE --- */}
-      <section style={{ marginBottom: '40px' }}>
-        <h2>All Characters ({characters.length})</h2>
-        <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid #333' }}>
-              <th>Player</th>
-              <th>Character Name</th>
-              <th>Class/Spec</th>
-              <th>Level</th>
-              <th>Bracket</th>
-            </tr>
-          </thead>
-          <tbody>
-            {characters.map(char => (
-              <tr key={char.id} style={{ borderBottom: '1px solid #eee' }}>
-                <td>{char.users?.username || 'Guest'}</td>
-                <td>{char.name}</td>
-                <td>{char.class_spec}</td>
-                <td>{char.level}</td>
-                <td>{char.bg_bracket}</td>
+        {/* --- MASTER TABLE --- */}
+        <section style={{ 
+          marginBottom: '30px', 
+          backgroundColor: '#1e1e1e', 
+          borderRadius: '8px', 
+          padding: '20px',
+          border: '1px solid #333'
+        }}>
+          <h2 style={{ marginTop: 0, color: '#fff', fontSize: '1.25rem' }}>
+            All Characters ({characters.length})
+          </h2>
+          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid #444', color: '#aaa' }}>
+                <th style={thStyle}>Player</th>
+                <th style={thStyle}>Character Name</th>
+                <th style={thStyle}>Class/Spec</th>
+                <th style={thStyle}>Level (Click -/+ to edit)</th>
+                <th style={thStyle}>Bracket</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+            </thead>
+            <tbody>
+              {characters.length > 0 ? characters.map(char => (
+                <tr key={char.id} style={{ borderBottom: '1px solid #2a2a2a' }}>
+                  <td style={tdStyle}>{char.users?.username || 'Guest'}</td>
+                  <td style={{ ...tdStyle, color: '#fff', fontWeight: 'bold' }}>{char.name}</td>
+                  <td style={tdStyle}>{char.class_spec}</td>
+                  <td style={tdStyle}>
+                    {/* Quick Level Controls */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <button 
+                        type="button" 
+                        onClick={() => handleLevelChange(char.id, char.level - 1)}
+                        disabled={char.level <= 1}
+                        style={smallBtnStyle}
+                      >
+                        -
+                      </button>
 
-      {/* --- MATCHMAKER --- */}
-      <section style={{ padding: '20px', backgroundColor: '#f9f9f9', borderRadius: '8px' }}>
-        <h2>Matchmaker</h2>
-        <label>Select Bracket to Queue: </label>
-        <select value={selectedBracket} onChange={e => setSelectedBracket(e.target.value)}>
-          <option value="10-19">10-19</option>
-          <option value="20-29">20-29</option>
-          <option value="30-39">30-39</option>
-          <option value="40-49">40-49</option>
-          <option value="50-59">50-59</option>
-          <option value="60-60">Level 60</option>
-        </select>
+                      <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 'bold', color: '#fff' }}>
+                        {char.level}
+                      </span>
 
-        <h3 style={{ marginTop: '20px' }}>Available Friends for {selectedBracket}</h3>
-        <ul>
-          {matches.length > 0 ? matches.map(match => (
-            <li key={match.id}>
-              <strong>{match.users?.username || 'Guest'}</strong> can play <strong>{match.name}</strong> (Level {match.level} {match.class_spec})
-            </li>
-          )) : (
-            <p>No characters found in this bracket.</p>
-          )}
-        </ul>
-      </section>
+                      <button 
+                        type="button" 
+                        onClick={() => handleLevelChange(char.id, char.level + 1)}
+                        disabled={char.level >= 60}
+                        style={smallBtnStyle}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </td>
+                  <td style={tdStyle}>
+                    <span style={{ 
+                      padding: '2px 8px', 
+                      backgroundColor: '#2a2a2a', 
+                      borderRadius: '12px', 
+                      fontSize: '0.85rem',
+                      color: '#60a5fa' 
+                    }}>
+                      {char.bg_bracket}
+                    </span>
+                  </td>
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan="5" style={{ ...tdStyle, textAlign: 'center', color: '#777' }}>
+                    No characters found. Add one above!
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </section>
+
+        {/* --- MATCHMAKER --- */}
+        <section style={{ 
+          padding: '20px', 
+          backgroundColor: '#1e1e1e', 
+          borderRadius: '8px', 
+          border: '1px solid #333' 
+        }}>
+          <h2 style={{ marginTop: 0, color: '#fff', fontSize: '1.25rem' }}>Matchmaker Queue</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+            <label style={{ color: '#aaa' }}>Select Bracket to Queue: </label>
+            <select 
+              value={selectedBracket} 
+              onChange={e => setSelectedBracket(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="10-19">10-19</option>
+              <option value="20-29">20-29</option>
+              <option value="30-39">30-39</option>
+              <option value="40-49">40-49</option>
+              <option value="50-59">50-59</option>
+              <option value="60-60">Level 60</option>
+            </select>
+          </div>
+
+          <h3 style={{ color: '#60a5fa', fontSize: '1.1rem' }}>
+            Available Friends in {selectedBracket}
+          </h3>
+          <ul style={{ paddingLeft: '20px', color: '#ccc' }}>
+            {matches.length > 0 ? matches.map(match => (
+              <li key={match.id} style={{ marginBottom: '8px' }}>
+                <strong style={{ color: '#fff' }}>{match.users?.username || 'Guest'}</strong> can play{' '}
+                <strong style={{ color: '#fff' }}>{match.name}</strong> (Level {match.level} {match.class_spec})
+              </li>
+            )) : (
+              <p style={{ color: '#777' }}>No characters currently in this bracket.</p>
+            )}
+          </ul>
+        </section>
+      </div>
     </div>
   );
 }
+
+// Reuseable Dark Mode Styles
+const inputStyle = {
+  backgroundColor: '#2a2a2a',
+  color: '#ffffff',
+  border: '1px solid #444',
+  padding: '8px 12px',
+  borderRadius: '4px',
+  outline: 'none'
+};
+
+const buttonStyle = {
+  backgroundColor: '#2563eb',
+  color: '#ffffff',
+  border: 'none',
+  padding: '8px 16px',
+  borderRadius: '4px',
+  cursor: 'pointer',
+  fontWeight: '600'
+};
+
+const smallBtnStyle = {
+  backgroundColor: '#333',
+  color: '#fff',
+  border: '1px solid #555',
+  borderRadius: '4px',
+  width: '26px',
+  height: '26px',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontWeight: 'bold'
+};
+
+const thStyle = {
+  padding: '12px 8px'
+};
+
+const tdStyle = {
+  padding: '12px 8px'
+};
