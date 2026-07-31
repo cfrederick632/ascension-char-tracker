@@ -41,13 +41,14 @@ export default function Home() {
     const levelNum = parseInt(newChar.level, 10);
     const bracket = calculateBracket(levelNum);
     const formattedName = formatName(newChar.name);
+	const formattedSpec = formatName(newChar.class_spec);
     
     const { error } = await supabase
       .from('characters')
       .insert([
         { 
           name: formattedName, 
-          class_spec: newChar.class_spec, 
+          class_spec: formattedSpec, 
           level: levelNum, 
           bg_bracket: bracket
         }
