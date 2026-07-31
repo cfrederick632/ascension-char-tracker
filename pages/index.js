@@ -5,48 +5,64 @@ export default function Home() {
   const [characters, setCharacters] = useState([]);
   const [newChar, setNewChar] = useState({ name: '', class_spec: '', level: '' });
   const [selectedBracket, setSelectedBracket] = useState('20-29');
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // Fetch all characters on page load
   useEffect(() => {
     fetchCharacters();
   }, []);
 
   const fetchCharacters = async () => {
+    // Left-join with users table, or fall back to plain characters if null
     const { data, error } = await supabase
       .from('characters')
-      .select(`*, users(username)`);
-    if (data) setCharacters(data);
+      .select('*, users(username)');
+
+    if (error) {
+      console.error('Error fetching characters:', error.message);
+      setErrorMessage(`Fetch Error: ${error.message}`);
+    } else if (data) {
+      setCharacters(data);
+    }
   };
 
   const handleAddCharacter = async (e) => {
     e.preventDefault();
-    const bracket = calculateBracket(parseInt(newChar.level));
+    setErrorMessage('');
+
+    const bracket = calculateBracket(newChar.level);
     
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('characters')
       .insert([
         { 
           name: newChar.name, 
           class_spec: newChar.class_spec, 
-          level: parseInt(newChar.level), 
+          level: parseInt(newChar.level, 10), 
           bg_bracket: bracket
         }
       ]);
       
-    if (!error) {
-      fetchCharacters(); // Refresh the list
-      setNewChar({ name: '', class_spec: '', level: '' });
-    } else {
+    if (error) {
       console.error('Error adding character:', error.message);
+      setErrorMessage(`Insert Error: ${error.message}`);
+    } else {
+      fetchCharacters(); // Refresh the table
+      setNewChar({ name: '', class_spec: '', level: '' });
     }
   };
 
-  // Filter characters for the matchmaker bracket
   const matches = characters.filter(c => c.bg_bracket === selectedBracket);
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
       <h1>Ascension WoW Matchmaker</h1>
+
+      {/* Error Display */}
+      {errorMessage && (
+        <div style={{ padding: '10px', backgroundColor: '#ffe6e6', color: '#cc0000', marginBottom: '20px', borderRadius: '4px' }}>
+          {errorMessage}
+        </div>
+      )}
 
       {/* --- ADD CHARACTER FORM --- */}
       <section style={{ marginBottom: '40px', padding: '20px', border: '1px solid #ccc' }}>
@@ -73,7 +89,7 @@ export default function Home() {
 
       {/* --- THE MASTER TABLE --- */}
       <section style={{ marginBottom: '40px' }}>
-        <h2>All Characters</h2>
+        <h2>All Characters ({characters.length})</h2>
         <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '2px solid #333' }}>
