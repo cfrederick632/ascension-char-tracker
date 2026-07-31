@@ -1,6 +1,56 @@
 import { useState, useEffect } from 'react';
 import { supabase, calculateBracket } from '../utils/supabase';
 
+// List of Ascension COA Classes
+const ASCENSION_CLASSES = [
+  'Barbarian',
+  'Bloodmage',
+  'Chronomancer',
+  'Cultist',
+  'Felsworn',
+  'Guardian',
+  'Knight of Xoroth',
+  'Necromancer',
+  'Primalist',
+  'Pyromancer',
+  'Ranger',
+  'Reaper',
+  'Runemaster',
+  'Starcaller',
+  'Stormbringer',
+  'Sun Cleric',
+  'Templar',
+  'Tinker',
+  'Venomancer',
+  'Witch Doctor',
+  'Witch Hunter'
+];
+
+// EASY TO EDIT: Class Color Map
+const CLASS_COLORS = {
+  'Barbarian':       '#C41E3A', // Red / Crimson
+  'Bloodmage':       '#E35252', // Bright Red
+  'Chronomancer':   '#69CCF0', // Light Blue
+  'Cultist':        '#A335EE', // Purple
+  'Felsworn':       '#A35C25', // Fel Brown / Orange
+  'Guardian':       '#F58CBA', // Pink
+  'Knight of Xoroth':'#C41F3B', // Dark Red
+  'Necromancer':    '#4D5D53', // Dark Slate
+  'Primalist':      '#FF7C0A', // Orange
+  'Pyromancer':     '#FF4500', // Fire Orange
+  'Ranger':         '#AAD372', // Light Green
+  'Reaper':         '#71D5C4', // Teal / Turquoise
+  'Runemaster':     '#00FF96', // Mint Green
+  'Starcaller':     '#FFF569', // Yellow
+  'Stormbringer':   '#0070DD', // Deep Blue
+  'Sun Cleric':     '#F4C430', // Gold / Yellow
+  'Templar':        '#F58CBA', // Paladin Pink
+  'Tinker':         '#E6CC80', // Copper / Brass
+  'Venomancer':     '#ABD473', // Venom Green
+  'Witch Doctor':   '#00FF96', // Jade / Green
+  'Witch Hunter':   '#D4AF37'  // Dark Gold
+};
+
 // Helper function to capitalize the first letter and lowercase the rest
 const formatName = (str) => {
   if (!str) return '';
@@ -10,7 +60,11 @@ const formatName = (str) => {
 
 export default function Home() {
   const [characters, setCharacters] = useState([]);
-  const [newChar, setNewChar] = useState({ name: '', class_spec: '', level: '' });
+  const [newChar, setNewChar] = useState({ 
+    name: '', 
+    class_spec: ASCENSION_CLASSES[0], 
+    level: '' 
+  });
   const [selectedBracket, setSelectedBracket] = useState('20-29');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -33,22 +87,21 @@ export default function Home() {
     }
   };
 
-  // Add a new character with auto-formatted name
+  // Add a new character with auto-formatted name and selected COA class
   const handleAddCharacter = async (e) => {
     e.preventDefault();
     setErrorMessage('');
 
-	const levelNum = parseInt(newChar.level, 10);
+    const levelNum = parseInt(newChar.level, 10);
     const bracket = calculateBracket(levelNum);
     const formattedName = formatName(newChar.name);
-	const formattedSpec = formatName(newChar.class_spec);
     
     const { error } = await supabase
       .from('characters')
       .insert([
         { 
           name: formattedName, 
-          class_spec: formattedSpec, 
+          class_spec: newChar.class_spec, 
           level: levelNum, 
           bg_bracket: bracket
         }
@@ -59,7 +112,7 @@ export default function Home() {
       setErrorMessage(`Insert Error: ${error.message}`);
     } else {
       fetchCharacters();
-      setNewChar({ name: '', class_spec: '', level: '' });
+      setNewChar({ name: '', class_spec: ASCENSION_CLASSES[0], level: '' });
     }
   };
 
@@ -138,11 +191,20 @@ export default function Home() {
               value={newChar.name} onChange={e => setNewChar({...newChar, name: e.target.value})} 
               style={inputStyle}
             />
-            <input 
-              type="text" placeholder="Class/Spec (e.g. Sun Cleric)" required
-              value={newChar.class_spec} onChange={e => setNewChar({...newChar, class_spec: e.target.value})} 
+            
+            {/* --- COA CLASS DROPDOWN --- */}
+            <select 
+              value={newChar.class_spec} 
+              onChange={e => setNewChar({...newChar, class_spec: e.target.value})} 
               style={inputStyle}
-            />
+            >
+              {ASCENSION_CLASSES.map(className => (
+                <option key={className} value={className}>
+                  {className}
+                </option>
+              ))}
+            </select>
+
             <input 
               type="number" placeholder="Level (1-60)" min="1" max="60" required
               value={newChar.level} onChange={e => setNewChar({...newChar, level: e.target.value})} 
@@ -174,51 +236,56 @@ export default function Home() {
               </tr>
             </thead>
             <tbody>
-              {characters.length > 0 ? characters.map(char => (
-                <tr key={char.id} style={{ borderBottom: '1px solid #2a2a2a' }}>
-                  <td style={tdStyle}>{char.users?.username || 'Guest'}</td>
-                  <td style={{ ...tdStyle, color: '#fff', fontWeight: 'bold' }}>
-                    {formatName(char.name)}
-                  </td>
-                  <td style={tdStyle}>{char.class_spec}</td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <button 
-                        type="button" 
-                        onClick={() => handleLevelChange(char.id, char.level - 1)}
-                        disabled={char.level <= 1}
-                        style={smallBtnStyle}
-                      >
-                        -
-                      </button>
+              {characters.length > 0 ? characters.map(char => {
+                const classColor = CLASS_COLORS[char.class_spec] || '#e0e0e0';
+                return (
+                  <tr key={char.id} style={{ borderBottom: '1px solid #2a2a2a' }}>
+                    <td style={tdStyle}>{char.users?.username || 'Guest'}</td>
+                    <td style={{ ...tdStyle, color: '#fff', fontWeight: 'bold' }}>
+                      {formatName(char.name)}
+                    </td>
+                    <td style={{ ...tdStyle, color: classColor, fontWeight: '600' }}>
+                      {char.class_spec}
+                    </td>
+                    <td style={tdStyle}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button 
+                          type="button" 
+                          onClick={() => handleLevelChange(char.id, char.level - 1)}
+                          disabled={char.level <= 1}
+                          style={smallBtnStyle}
+                        >
+                          -
+                        </button>
 
-                      <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 'bold', color: '#fff' }}>
-                        {char.level}
+                        <span style={{ minWidth: '24px', textAlign: 'center', fontWeight: 'bold', color: '#fff' }}>
+                          {char.level}
+                        </span>
+
+                        <button 
+                          type="button" 
+                          onClick={() => handleLevelChange(char.id, char.level + 1)}
+                          disabled={char.level >= 60}
+                          style={smallBtnStyle}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </td>
+                    <td style={tdStyle}>
+                      <span style={{ 
+                        padding: '2px 8px', 
+                        backgroundColor: '#2a2a2a', 
+                        borderRadius: '12px', 
+                        fontSize: '0.85rem',
+                        color: '#60a5fa' 
+                      }}>
+                        {char.bg_bracket}
                       </span>
-
-                      <button 
-                        type="button" 
-                        onClick={() => handleLevelChange(char.id, char.level + 1)}
-                        disabled={char.level >= 60}
-                        style={smallBtnStyle}
-                      >
-                        +
-                      </button>
-                    </div>
-                  </td>
-                  <td style={tdStyle}>
-                    <span style={{ 
-                      padding: '2px 8px', 
-                      backgroundColor: '#2a2a2a', 
-                      borderRadius: '12px', 
-                      fontSize: '0.85rem',
-                      color: '#60a5fa' 
-                    }}>
-                      {char.bg_bracket}
-                    </span>
-                  </td>
-                </tr>
-              )) : (
+                    </td>
+                  </tr>
+                );
+              }) : (
                 <tr>
                   <td colSpan="5" style={{ ...tdStyle, textAlign: 'center', color: '#777' }}>
                     No characters found. Add one above!
@@ -257,12 +324,16 @@ export default function Home() {
             Available Friends in {selectedBracket}
           </h3>
           <ul style={{ paddingLeft: '20px', color: '#ccc' }}>
-            {matches.length > 0 ? matches.map(match => (
-              <li key={match.id} style={{ marginBottom: '8px' }}>
-                <strong style={{ color: '#fff' }}>{match.users?.username || 'Guest'}</strong> can play{' '}
-                <strong style={{ color: '#fff' }}>{formatName(match.name)}</strong> (Level {match.level} {match.class_spec})
-              </li>
-            )) : (
+            {matches.length > 0 ? matches.map(match => {
+              const matchClassColor = CLASS_COLORS[match.class_spec] || '#fff';
+              return (
+                <li key={match.id} style={{ marginBottom: '8px' }}>
+                  <strong style={{ color: '#fff' }}>{match.users?.username || 'Guest'}</strong> can play{' '}
+                  <strong style={{ color: '#fff' }}>{formatName(match.name)}</strong> (Level {match.level}{' '}
+                  <span style={{ color: matchClassColor, fontWeight: '600' }}>{match.class_spec}</span>)
+                </li>
+              );
+            }) : (
               <p style={{ color: '#777' }}>No characters currently in this bracket.</p>
             )}
           </ul>
