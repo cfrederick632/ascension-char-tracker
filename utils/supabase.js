@@ -1,12 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-// You will get these from your Supabase project settings
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Fallback to empty string to prevent build-time instantiation crashes
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://weprmrcidfothcodadwp.supabase.co';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_OgQ1AGMyiPdYIhqk_XVuyw_81P3qXSO';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Utility function to calculate the BG bracket
 export const calculateBracket = (level) => {
   if (level < 10) return 'Under 10';
   const lowerBound = Math.floor(level / 10) * 10;
