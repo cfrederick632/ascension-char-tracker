@@ -38,7 +38,7 @@ export default function Home() {
     e.preventDefault();
     setErrorMessage('');
 
-    const levelNum = parseInt(newChar.level, 10);
+	const levelNum = parseInt(newChar.level, 10);
     const bracket = calculateBracket(levelNum);
     const formattedName = formatName(newChar.name);
 	const formattedSpec = formatName(newChar.class_spec);
@@ -92,6 +92,18 @@ export default function Home() {
       padding: '30px 20px', 
       fontFamily: 'system-ui, -apple-system, sans-serif' 
     }}>
+      {/* --- GLOBAL CSS RESET TO REMOVE WHITE BORDER --- */}
+      <style jsx global>{`
+        html, body {
+          margin: 0;
+          padding: 0;
+          background-color: #121212;
+        }
+        * {
+          box-sizing: border-box;
+        }
+      `}</style>
+
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
         <h1 style={{ color: '#ffffff', borderBottom: '2px solid #333', paddingBottom: '10px' }}>
           ⚔️ Ascension WoW Matchmaker
