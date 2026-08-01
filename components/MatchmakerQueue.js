@@ -7,6 +7,7 @@ export default function MatchmakerQueue({ characters, selectedBracket, setSelect
 
   return (
     <section style={{ 
+      marginBottom: '30px', 
       padding: '20px', 
       backgroundColor: '#1e1e1e', 
       borderRadius: '8px', 
@@ -32,7 +33,7 @@ export default function MatchmakerQueue({ characters, selectedBracket, setSelect
       <h3 style={{ color: '#60a5fa', fontSize: '1.1rem' }}>
         Available Friends in {selectedBracket}
       </h3>
-      <ul style={{ paddingLeft: '20px', color: '#ccc' }}>
+      <ul style={{ paddingLeft: '20px', color: '#ccc', marginBottom: 0 }}>
         {matches.length > 0 ? matches.map(match => {
           const matchPlayerName = match.users?.username || 'Guest';
           const matchUserColor = getUsernameColor(matchPlayerName);
@@ -46,7 +47,7 @@ export default function MatchmakerQueue({ characters, selectedBracket, setSelect
             </li>
           );
         }) : (
-          <p style={{ color: '#777' }}>No characters currently in this bracket.</p>
+          <p style={{ color: '#777', margin: 0 }}>No characters currently in this bracket.</p>
         )}
       </ul>
     </section>

@@ -209,16 +209,18 @@ export default function Home() {
           />
         )}
 
-        <CharacterTable 
-          characters={characters}
-          session={session}
-          onLevelChange={handleLevelChange}
-        />
-
+        {/* --- MATCHMAKER QUEUE (MOVED UP) --- */}
         <MatchmakerQueue 
           characters={characters}
           selectedBracket={selectedBracket}
           setSelectedBracket={setSelectedBracket}
+        />
+
+        {/* --- CHARACTER TABLE --- */}
+        <CharacterTable 
+          characters={characters}
+          session={session}
+          onLevelChange={handleLevelChange}
         />
       </div>
     </div>

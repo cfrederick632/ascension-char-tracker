@@ -5,7 +5,7 @@ import { thStyle, tdStyle, smallBtnStyle } from '../styles/theme';
 export default function CharacterTable({ characters, session, onLevelChange }) {
   return (
     <section style={{ 
-      marginBottom: '30px', 
+      marginBottom: 0, 
       backgroundColor: '#1e1e1e', 
       borderRadius: '8px', 
       padding: '20px',
